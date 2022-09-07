@@ -3,12 +3,16 @@ const _ = require("lodash");
 
 //post http://localhost:80801/api/categories
 async function create_categories(req, res) {
-  const Create = new model.Categories({
-    type: "Investment",
-    color: "#FCBE44",
+  if (_.isEmpty(req.body))
+    return res.status(400).json("PostHTTP data not Provided");
+
+  let { type, color } = req.body;
+  const Create = await new model.Categories({
+    type,
+    color,
   });
 
-  await Create.save(function (err) {
+  Create.save(function (err) {
     if (!err) return res.json(Create);
     return res
       .status(400)
@@ -49,14 +53,49 @@ async function get_Transaction(req, res) {
 
 //delete http://localhost:80801/api/transaction
 async function delete_Transaction(req, res) {
-  if (_.isEmpty(req.body))
+  if (!req.body.id)
     return res.status(400).json({ message: "Request body not found" });
-  await model.Transaction.deleteOne(res.body, function (err) {
+  await model.Transaction.deleteOne({ _id: req.body.id }, function (err) {
     if (!err) res.json("Record deleted...!");
   })
     .clone()
     .catch(function (err) {
       res.json(`Error while deleting TransactionRecord ${err}`);
+    });
+}
+
+//get http://localhost:80801/api/labels
+async function get_Labels(req, res) {
+  model.Transaction.aggregate([
+    {
+      $lookup: {
+        from: "categories",
+        localField: "type",
+        foreignField: "type",
+        as: "categories_info",
+      },
+    },
+    {
+      $unwind: "$categories_info",
+    },
+  ])
+    .then((result) => {
+      let data = result.map((v) =>
+        Object.assign(
+          {},
+          {
+            _id: v._id,
+            name: v.name,
+            type: v.type,
+            amount: v.amount,
+            color: v.categories_info.color,
+          }
+        )
+      );
+      res.json(data);
+    })
+    .catch((error) => {
+      res.status(400).json("Lookup Collection Error");
     });
 }
 
@@ -66,4 +105,5 @@ module.exports = {
   create_Transaction,
   get_Transaction,
   delete_Transaction,
+  get_Labels,
 };

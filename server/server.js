@@ -6,7 +6,11 @@ require("dotenv").config({ path: "./config.env" });
 const port = process.env.PORT || 5003;
 
 //use middleware
-app.use(cors());
+app.use(
+  cors({
+    origin: "*",
+  })
+);
 app.use(express.json());
 
 //mongodb connection
